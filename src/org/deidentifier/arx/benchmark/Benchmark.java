@@ -1,5 +1,5 @@
 /*
- * Kettle re-identification risk management step
+ * Benchmark of cell-suppression with ARX
  * Copyright (C) 2018 TUM/MRI
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.deidentifier.arx.kettle.benchmark;
+package org.deidentifier.arx.benchmark;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
