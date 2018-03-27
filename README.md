@@ -1,7 +1,7 @@
-Experimental Evaluation of a Privacy Plugin for PDI/Kettle
+Experimental Evaluation of a cell suppression algorithm
 ====
 
-This project implements an experimental evaluation of the ARX Plugin for the Pentaho Data Integration ETL framework.
+This project implements an experimental evaluation of a cell suppression algorithm, which is used by the ARX Plugin for the Pentaho Data Integration ETL framework.
 
 License
 ------
