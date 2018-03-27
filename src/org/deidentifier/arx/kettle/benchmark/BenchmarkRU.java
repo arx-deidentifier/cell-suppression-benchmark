@@ -147,9 +147,7 @@ public class BenchmarkRU {
             String attribute = data.getHandle().getAttributeName(i);
             data.getDefinition().setAttributeType(attribute, getHierarchy(data, attribute));
         }      
-
         return data;
-
     }
 
     /**
@@ -228,7 +226,6 @@ public class BenchmarkRU {
                 }
             }
         }
-
         return suppressedCells/numCells;
     }
 
@@ -252,7 +249,6 @@ public class BenchmarkRU {
         } else {
             throw new IllegalArgumentException("invalid dataset: " + dataset);
         }
-
         return qis;
     }
 

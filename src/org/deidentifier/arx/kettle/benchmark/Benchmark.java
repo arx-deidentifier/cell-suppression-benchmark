@@ -136,11 +136,8 @@ public class Benchmark {
      * @throws RollbackRequiredException
      */
     private static void evaluateSuppressedCells(String dataset, Risks risks, int numQis) throws IOException, RollbackRequiredException {
-
         DataHandle result = performCellSuppression(dataset, risks, numQis);
-
         System.out.println(numQis + " - " + String.valueOf(countSuppressedCells(result.iterator())));
-
     }
 
     /**
@@ -153,11 +150,8 @@ public class Benchmark {
      * @throws RollbackRequiredException
      */
     private static void evaluateEntropy(String dataset, Risks risks, int numQis) throws IOException, RollbackRequiredException {
-
         DataHandle result = performCellSuppression(dataset, risks, numQis);
-
         System.out.println(numQis + " - " + result.getStatistics().getQualityStatistics().getNonUniformEntropy().getArithmeticMean(false));
-
     }
 
     /**
@@ -167,13 +161,9 @@ public class Benchmark {
      * @throws RollbackRequiredException 
      */
     private static void evaluateExecutionTime(String dataset, Risks risks, int numQis) throws IOException, RollbackRequiredException {
-
         long start = System.currentTimeMillis();     
-
         performCellSuppression(dataset, risks, numQis);
-
         System.out.println(numQis + " - " + (System.currentTimeMillis() - start));
-
     }
 
     /**
@@ -201,9 +191,7 @@ public class Benchmark {
             String attribute = data.getHandle().getAttributeName(i);
             data.getDefinition().setAttributeType(attribute, getHierarchy(data, attribute));
         }      
-
         return data;
-
     }
 
     /**
@@ -282,7 +270,6 @@ public class Benchmark {
                 }
             }
         }
-
         return suppressedCells/numCells;
     }
 
