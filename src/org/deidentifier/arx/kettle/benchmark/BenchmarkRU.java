@@ -42,19 +42,24 @@ import org.deidentifier.arx.metric.Metric;
  * combination of risk measures and interpretations of missing values.
  * 
  * @author Fabian Prasser
+ * @author Helmut Spengler
+ * @author Johanna Eicher
+ * @author Raffael Bild
  *
  */
 public class BenchmarkRU {
-    
+
     /**
      * This class encapsulates parameters related to risk management. It can be used
      * for threshold definitions as well as for storing/retrieving results.
      * 
      * @author Fabian Prasser
      * @author Helmut Spengler
+     * @author Johanna Eicher
+     * @author Raffael Bild
      */
     private static class Risks {
-        
+
         /** Threshold for the average risk */
         final private double averageRisk;;
         /** Threshold for the highest risk */
@@ -78,10 +83,10 @@ public class BenchmarkRU {
         @Override
         public String toString() {
             return "Risks [averageRisk=" + averageRisk + ", highestRisk=" + highestRisk +
-                   ", recordsAtRisk=" + recordsAtRisk + "]";
+                    ", recordsAtRisk=" + recordsAtRisk + "]";
         }
     }
-    
+
     /** The directory containing the input files */
     private static String DATA_DIR = "./data/";
 
@@ -92,7 +97,7 @@ public class BenchmarkRU {
      * @throws RollbackRequiredException
      */
     public static void main(String[] args) throws IOException, RollbackRequiredException {        
-        
+
         // For each file
         for (String file : new String[]{"adult", "ihis"}) {
             System.out.println("File: " + file + " - " + "Highest risk (own)");
@@ -127,24 +132,24 @@ public class BenchmarkRU {
      * @throws IOException 
      */
     private static Data getData(String dataset, int numQis) throws IOException {        
-    
+
         String[] qis = Arrays.copyOfRange(getQis(dataset), 0, numQis);
-        
+
         Data data = Data.create(DATA_DIR + dataset + ".csv", StandardCharsets.UTF_8, ';');
-    
+
         int numColumns = data.getHandle().getNumColumns();
         // Declare all attributes as insensitive
         for (int i = 0; i < numColumns; i++) {
             data.getDefinition().setAttributeType(data.getHandle().getAttributeName(i), AttributeType.INSENSITIVE_ATTRIBUTE);
         }
-    
+
         for (int i = 0; i < qis.length; i++) {
             String attribute = data.getHandle().getAttributeName(i);
             data.getDefinition().setAttributeType(attribute, getHierarchy(data, attribute));
         }      
-        
+
         return data;
-        
+
     }
 
     /**
@@ -154,9 +159,9 @@ public class BenchmarkRU {
      * @return
      */
     private static ARXConfiguration createARXConfig(Risks risks) {
-    
+
         ARXConfiguration config = ARXConfiguration.create();
-    
+
         double maxOutliers = 1.0d - 0.01d;
         config.setSuppressionLimit(maxOutliers);
         config.setQualityModel(Metric.createLossMetric(0d));
@@ -172,7 +177,7 @@ public class BenchmarkRU {
             config.addPrivacyModel(new AverageReidentificationRisk(risks.averageRisk, risks.highestRisk, risks.recordsAtRisk));   
         }
         config.setHeuristicSearchEnabled(false);
-    
+
         return config;
     }
 
@@ -186,15 +191,15 @@ public class BenchmarkRU {
      * @throws RollbackRequiredException
      */
     private static DataHandle performCellSuppression(String dataset, Risks risks, int numQis) throws IOException, RollbackRequiredException {
-        
+
         // Configure and set up
         Data data = getData(dataset, numQis);
         ARXConfiguration config = createARXConfig(risks);        
         ARXAnonymizer anonymizer = new ARXAnonymizer();
-        
+
         // Generalize
         ARXResult result = anonymizer.anonymize(data, config);
-        
+
         // Suppress cells
         DataHandle output = result.getOutput();
         if (output != null && result.isOptimizable(output)) {
@@ -213,7 +218,7 @@ public class BenchmarkRU {
 
         double suppressedCells = 0;
         double numCells = 0;
-        
+
         while (iterator.hasNext()) {
             String[] line = iterator.next();
             for (int i = 0; i < line.length; i++) {
