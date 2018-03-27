@@ -97,7 +97,6 @@ public class BenchmarkRU {
      * @throws RollbackRequiredException
      */
     public static void main(String[] args) throws IOException, RollbackRequiredException {        
-
         // For each file
         for (String file : new String[]{"adult", "ihis"}) {
             System.out.println("File: " + file + " - " + "Highest risk (own)");
@@ -132,7 +131,6 @@ public class BenchmarkRU {
      * @throws IOException 
      */
     private static Data getData(String dataset, int numQis) throws IOException {        
-
         String[] qis = Arrays.copyOfRange(getQis(dataset), 0, numQis);
 
         Data data = Data.create(DATA_DIR + dataset + ".csv", StandardCharsets.UTF_8, ';');
@@ -157,7 +155,6 @@ public class BenchmarkRU {
      * @return
      */
     private static ARXConfiguration createARXConfig(Risks risks) {
-
         ARXConfiguration config = ARXConfiguration.create();
 
         double maxOutliers = 1.0d - 0.01d;
@@ -189,15 +186,12 @@ public class BenchmarkRU {
      * @throws RollbackRequiredException
      */
     private static DataHandle performCellSuppression(String dataset, Risks risks, int numQis) throws IOException, RollbackRequiredException {
-
         // Configure and set up
         Data data = getData(dataset, numQis);
         ARXConfiguration config = createARXConfig(risks);        
         ARXAnonymizer anonymizer = new ARXAnonymizer();
-
         // Generalize
         ARXResult result = anonymizer.anonymize(data, config);
-
         // Suppress cells
         DataHandle output = result.getOutput();
         if (output != null && result.isOptimizable(output)) {
@@ -213,7 +207,6 @@ public class BenchmarkRU {
      * @return
      */
     private static double countSuppressedCells(Iterator<String[]> iterator) {
-
         double suppressedCells = 0;
         double numCells = 0;
 
@@ -236,7 +229,6 @@ public class BenchmarkRU {
      * @return
      */
     private static String[] getQis(String dataset) {
-
         String[] qisAdult = { "sex", "age", "race", "marital-status", "education", "native-country", "workclass", "occupation", "salary-class" };
         String[] qisIhis  = { "YEAR", "QUARTER", "REGION", "PERNUM", "AGE", "MARSTAT", "SEX", "RACEA", "EDUC" };
 

@@ -59,7 +59,6 @@ public class Benchmark {
      * @author Raffael Bild
      */
     private static class Risks {
-
         /** Threshold for the average risk */
         final private double averageRisk;;
         /** Threshold for the highest risk */
@@ -96,27 +95,23 @@ public class Benchmark {
      * @throws RollbackRequiredException
      */
     public static void main(String[] args) throws IOException, RollbackRequiredException {        
-
         // For each file
         for (String file : new String[]{"adult", "ihis"}) {
 
             // for each records at risk variant
             for (Risks risks : new Risks[] {new Risks(1.0d, 0.2d, 0.0d),
                                             new Risks(1.0d, 0.2d, 0.1d)}) {
-
                 // Suppressed cells
                 System.out.println(file);
                 System.out.println("Suppressed cells (privacy = " + risks.toString()+")");
                 for (int i = 1; i <= 9; i++ ) {
                     evaluateSuppressedCells(file, risks, i);
                 }
-
                 // Non-uniform entropy
                 System.out.println("Non-uniform entropy (privacy = " + risks.toString()+")");
                 for (int i = 1; i <= 9; i++ ) {
                     evaluateEntropy(file, risks, i);
                 }
-
                 // Execution time
                 System.out.println("Execution time [ms] (privacy = " + risks.toString()+")");
                 for (int i = 1; i <= 9; i++ ) {
@@ -176,7 +171,6 @@ public class Benchmark {
      * @throws IOException 
      */
     private static Data getData(String dataset, int numQis) throws IOException {        
-
         String[] qis = Arrays.copyOfRange(getQis(dataset), 0, numQis);
 
         Data data = Data.create(DATA_DIR + dataset + ".csv", StandardCharsets.UTF_8, ';');
@@ -201,7 +195,6 @@ public class Benchmark {
      * @return
      */
     private static ARXConfiguration createARXConfig(Risks risks) {
-
         ARXConfiguration config = ARXConfiguration.create();
 
         double maxOutliers = 1.0d - 0.01d;
@@ -219,7 +212,6 @@ public class Benchmark {
             config.addPrivacyModel(new AverageReidentificationRisk(risks.averageRisk, risks.highestRisk, risks.recordsAtRisk));   
         }
         config.setHeuristicSearchEnabled(false);
-
         return config;
     }
 
@@ -233,7 +225,6 @@ public class Benchmark {
      * @throws RollbackRequiredException
      */
     private static DataHandle performCellSuppression(String dataset, Risks risks, int numQis) throws IOException, RollbackRequiredException {
-
         // Configure and set up
         Data data = getData(dataset, numQis);
         ARXConfiguration config = createARXConfig(risks);        
@@ -257,7 +248,6 @@ public class Benchmark {
      * @return
      */
     private static double countSuppressedCells(Iterator<String[]> iterator) {
-
         double suppressedCells = 0;
         double numCells = 0;
 
@@ -280,10 +270,8 @@ public class Benchmark {
      * @return
      */
     private static String[] getQis(String dataset) {
-
         String[] qisAdult = { "sex", "age", "race", "marital-status", "education", "native-country", "workclass", "occupation", "salary-class" };
         String[] qisIhis  = { "YEAR", "QUARTER", "REGION", "PERNUM", "AGE", "MARSTAT", "SEX", "RACEA", "EDUC" };
-
 
         String[] qis;
         if (dataset.equals("adult")) {
@@ -293,7 +281,6 @@ public class Benchmark {
         } else {
             throw new IllegalArgumentException("invalid dataset: " + dataset);
         }
-
         return qis;
     }
 
