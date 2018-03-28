@@ -125,13 +125,13 @@ public class BenchmarkRU {
      * Load and configure a dataset with the given number of quasi-identifiers
      * 
      * @param dataset
-     * @param risks
+     * @param risks // TODO: BUG
      * @param numQis
      * @return
      * @throws IOException 
      */
     private static Data getData(String dataset, int numQis) throws IOException {        
-        String[] qis = Arrays.copyOfRange(getQis(dataset), 0, numQis);
+        String[] qis = Arrays.copyOfRange(getQis(dataset), 0, numQis); // TODO: BUG
 
         Data data = Data.create(DATA_DIR + dataset + ".csv", StandardCharsets.UTF_8, ';');
 
@@ -141,15 +141,15 @@ public class BenchmarkRU {
             data.getDefinition().setAttributeType(data.getHandle().getAttributeName(i), AttributeType.INSENSITIVE_ATTRIBUTE);
         }
 
-        for (int i = 0; i < qis.length; i++) {
-            String attribute = data.getHandle().getAttributeName(i);
+        for (int i = 0; i < qis.length; i++) { // TODO: BUG
+            String attribute = data.getHandle().getAttributeName(i); // TODO: BUG
             data.getDefinition().setAttributeType(attribute, getHierarchy(data, attribute));
         }      
         return data;
     }
 
     /**
-     * Create an ARX configuration with the parameters used in the rest of the paper.
+     * Create an ARX configuration with the parameters used in the rest of the paper. // TODO: BUG
      * 
      * @param risks
      * @return
