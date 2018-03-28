@@ -165,13 +165,12 @@ public class Benchmark {
      * Load and configure a dataset with the given number of quasi-identifiers
      * 
      * @param dataset
-     * @param risks // TODO: BUG
      * @param numQis
      * @return
      * @throws IOException 
      */
     private static Data getData(String dataset, int numQis) throws IOException {        
-        String[] qis = Arrays.copyOfRange(getQis(dataset), 0, numQis); // TODO: BUG 
+        String[] qis = Arrays.copyOf(getAttributes(dataset), numQis);
 
         Data data = Data.create(DATA_DIR + dataset + ".csv", StandardCharsets.UTF_8, ';');
 
@@ -180,16 +179,15 @@ public class Benchmark {
         for (int i = 0; i < numColumns; i++) {
             data.getDefinition().setAttributeType(data.getHandle().getAttributeName(i), AttributeType.INSENSITIVE_ATTRIBUTE);
         }
-
-        for (int i = 0; i < qis.length; i++) { // TODO: BUG
-            String attribute = data.getHandle().getAttributeName(i); // TODO: BUG
-            data.getDefinition().setAttributeType(attribute, getHierarchy(data, attribute));
+        // Declare qis and attach hierarchies
+        for (String qi : qis) {
+            data.getDefinition().setAttributeType(qi, getHierarchy(data, qi));
         }      
         return data;
     }
 
     /**
-     * Create an ARX configuration with the parameters used in the rest of the paper. // TODO: BUG
+     * Create ARX configuration
      * 
      * @param risks
      * @return
@@ -269,7 +267,7 @@ public class Benchmark {
      * @param dataset
      * @return
      */
-    private static String[] getQis(String dataset) {
+    private static String[] getAttributes(String dataset) {
         String[] qisAdult = { "sex", "age", "race", "marital-status", "education", "native-country", "workclass", "occupation", "salary-class" };
         String[] qisIhis  = { "YEAR", "QUARTER", "REGION", "PERNUM", "AGE", "MARSTAT", "SEX", "RACEA", "EDUC" };
 
