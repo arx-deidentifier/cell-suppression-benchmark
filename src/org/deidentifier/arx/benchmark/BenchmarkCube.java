@@ -78,6 +78,10 @@ public class BenchmarkCube {
         // - Final results
         // - Median relative error (point queries): 0.0
         // - Median relative error (range queries): 0.6510762075962129
+        // Bayesian with threshold (0.2)
+        // - Final results
+        // - Median relative error (point queries): 0.0
+        // - Median relative error (range queries): 0.39522979563853994
 
         // Perform experiment
         Data data = getData("adult");
