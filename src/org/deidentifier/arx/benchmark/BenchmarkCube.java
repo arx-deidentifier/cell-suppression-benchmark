@@ -39,6 +39,7 @@ import org.deidentifier.arx.AttributeType.Hierarchy.DefaultHierarchy;
 import org.deidentifier.arx.Data;
 import org.deidentifier.arx.DataHandle;
 import org.deidentifier.arx.DataType;
+import org.deidentifier.arx.aggregates.StatisticsFrequencyDistribution;
 import org.deidentifier.arx.criteria.DistinctLDiversity;
 import org.deidentifier.arx.criteria.KAnonymity;
 import org.deidentifier.arx.exceptions.RollbackRequiredException;
@@ -72,6 +73,11 @@ public class BenchmarkCube {
         // - LM: 0.09761653690984728
         // - Median relative error (point queries): 0.0
         // - Median relative error (range queries): 0.7023809523809523
+        // Simple interpolation
+        // - LM: 0.09761653690984728
+        // - Final results
+        // - Median relative error (point queries): 0.0
+        // - Median relative error (range queries): 0.6510762075962129
 
         // Perform experiment
         Data data = getData("adult");
@@ -90,6 +96,9 @@ public class BenchmarkCube {
         // Statistics
         DescriptiveStatistics statsPointQuery = new DescriptiveStatistics();
         DescriptiveStatistics statsRangeQuery = new DescriptiveStatistics();
+        
+        // Posteriori likelihoods
+        Map<Integer, Map<String, Double>> likelihoods = getLikelihoods(output);
         
         // For each set in the power set
         int count = 0;
@@ -111,8 +120,8 @@ public class BenchmarkCube {
                 Map<Integer, Set<String>> rangeQuery = getRandomRangeQuery(input, set);
 
                 // Perform and analze
-                statsPointQuery.addValue(getRelativeError(executeQuery(pointQuery, input, false), executeQuery(pointQuery, output, true)));
-                statsRangeQuery.addValue(getRelativeError(executeQuery(rangeQuery, input, false), executeQuery(rangeQuery, output, true)));
+                statsPointQuery.addValue(getRelativeError(executeQuery(pointQuery, input, null), executeQuery(pointQuery, output, likelihoods)));
+                statsRangeQuery.addValue(getRelativeError(executeQuery(rangeQuery, input, null), executeQuery(rangeQuery, output, likelihoods)));
             }
             
             // Status
@@ -129,6 +138,23 @@ public class BenchmarkCube {
         System.out.println(" - Median relative error (point queries): " + statsPointQuery.getPercentile(50d));
         System.out.println(" - Median relative error (range queries): " + statsRangeQuery.getPercentile(50d));
 
+    }
+
+    /**
+     * Creates a map of likelihoods
+     * @param output
+     * @return
+     */
+    private static Map<Integer, Map<String, Double>> getLikelihoods(DataHandle output) {
+        Map<Integer, Map<String, Double>> likelihoods = new HashMap<>();
+        for (int i=0; i<output.getNumColumns(); i++) {
+            likelihoods.put(i, new HashMap<String, Double>());
+            StatisticsFrequencyDistribution distribution = output.getStatistics().getFrequencyDistribution(i);
+            for (int j=0; j<distribution.values.length; j++) {
+                likelihoods.get(i).put(distribution.values[j], distribution.frequency[j]);
+            }
+        }
+        return likelihoods;
     }
 
     /**
@@ -151,45 +177,54 @@ public class BenchmarkCube {
      * Executes the query on the given handle
      * @param query
      * @param handle
+     * @param likelihoods
      * @return
      */
-    private static double executeQuery(Map<Integer, Set<String>> query, DataHandle handle, boolean interpolation) {
+    private static double executeQuery(Map<Integer, Set<String>> query, DataHandle handle, Map<Integer, Map<String, Double>> likelihoods) {
         
         // Prepare
         double count = 0;
-        double ignoredRecords = 0;
+        Map<Integer, Double> preparedLikelihoods = new HashMap<>();
+        if (likelihoods != null) {
+            for (Entry<Integer, Set<String>> predicate : query.entrySet()) {
+                double likelihood = 0d;
+                for (String value : predicate.getValue()) {
+                    Double frequency = likelihoods.get(predicate.getKey()).get(value);
+                    likelihood += (frequency == null ? 0d : frequency);
+                }
+                preparedLikelihoods.put(predicate.getKey(), likelihood);
+            }
+        }
         
         // Search all rows
         outer: for (int row = 0; row < handle.getNumRows(); row++) {
             
+            double likelihood = 1d;
+            
             // For each predicate
             for (Entry<Integer, Set<String>> predicate : query.entrySet()) {
                 
-                // If not found: skip
-                if (!predicate.getValue().contains(handle.getValue(row, predicate.getKey()))) {
+                // Value
+                String value = handle.getValue(row, predicate.getKey());
+                
+                // If not found
+                if (!predicate.getValue().contains(value)) {
                     
-                    // Interpolate from ignored records
-                    if (handle.getValue(row, predicate.getKey()).equals("*") && interpolation) {
-                        ignoredRecords++;
+                    // Skip if no likelihoods have been defined
+                    if (likelihoods == null || !value.equals("*")) {
+                        continue outer;
+                    } else {
+                        likelihood *= preparedLikelihoods.get(predicate.getKey());
                     }
-                    
-                    // Continue
-                    continue outer;
                 }
             }
-            
+
             // Found: increment
-            count++;
+            if (likelihood > 0.2d) {
+                count++;
+            }
         }
-        
-        // Interpolate from ignored records
-        if (interpolation) {
-            
-            double overallFraction = count / (handle.getNumRows() - ignoredRecords);
-            double delta = overallFraction * ignoredRecords;
-            count += delta;
-        }
-        
+
         // Done
         return count;
     }
