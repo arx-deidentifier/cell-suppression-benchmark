@@ -78,18 +78,15 @@ public class BenchmarkCube {
         // - Final results
         // - Median relative error (point queries): 0.0
         // - Median relative error (range queries): 0.6510762075962129
-        // Bayesian with threshold (0.2)
+        // Estimated using posteriori distribution with sigmoid activation function
         // - Final results
         // - Median relative error (point queries): 0.0
-        // - Median relative error (range queries): 0.39522979563853994
+        // - Median relative error (range queries): 0.36184886222834983
 
         // Perform experiment
         Data data = getData("adult");
         DataHandle output = getOutput(data);
         DataHandle input = data.getHandle();
-
-        // Basic statistics
-        System.out.println(" - LM: " + (1d - output.getStatistics().getQualityStatistics().getGranularity().getArithmeticMean(false)));
 
         // Obtain attributes
         Set<String> attributes = new HashSet<>();
@@ -100,6 +97,7 @@ public class BenchmarkCube {
         // Statistics
         DescriptiveStatistics statsPointQuery = new DescriptiveStatistics();
         DescriptiveStatistics statsRangeQuery = new DescriptiveStatistics();
+        DescriptiveStatistics statsLM = new DescriptiveStatistics();
         
         // Posteriori likelihoods
         Map<Integer, Map<String, Double>> likelihoods = getLikelihoods(output);
@@ -114,22 +112,23 @@ public class BenchmarkCube {
                 continue;
             }
 
-            count++;
+            // Information loss
+//            statsLM.add((1d - output.getStatistics().getQualityStatistics(set).getGranularity().getArithmeticMean()));
            
             // Perform experiments
-            for (int i = 0; i < 1000; i++) {
+            for (int i = 0; i < 100; i++) {
 
                 // Create
                 Map<Integer, Set<String>> pointQuery = getRandomPointQuery(input, set, true);
                 Map<Integer, Set<String>> rangeQuery = getRandomRangeQuery(input, set);
 
                 // Perform and analze
-                statsPointQuery.addValue(getRelativeError(executeQuery(pointQuery, input, null), executeQuery(pointQuery, output, likelihoods)));
-                statsRangeQuery.addValue(getRelativeError(executeQuery(rangeQuery, input, null), executeQuery(rangeQuery, output, likelihoods)));
+                statsPointQuery.addValue(getRelativeError(getCount(pointQuery, input, null), getCount(pointQuery, output, null)));
+                statsRangeQuery.addValue(getRelativeError(getCount(rangeQuery, input, null), getCount(rangeQuery, output, likelihoods)));
             }
             
             // Status
-            System.out.println(" - Work done: " + count + " / " + total);
+            System.out.println(" - Work done: " + (++count) + " / " + total);
 
             // Print statistics
             System.out.println(" - Median relative error (point queries): " + statsPointQuery.getPercentile(50d));
@@ -139,44 +138,11 @@ public class BenchmarkCube {
 
         // Print statistics
         System.out.println(" - Final results");
+        System.out.println(" - LM: " + statsLM.getMean());
         System.out.println(" - Median relative error (point queries): " + statsPointQuery.getPercentile(50d));
         System.out.println(" - Median relative error (range queries): " + statsRangeQuery.getPercentile(50d));
 
     }
-
-    /**
-     * Creates a map of likelihoods
-     * @param output
-     * @return
-     */
-    private static Map<Integer, Map<String, Double>> getLikelihoods(DataHandle output) {
-        Map<Integer, Map<String, Double>> likelihoods = new HashMap<>();
-        for (int i=0; i<output.getNumColumns(); i++) {
-            likelihoods.put(i, new HashMap<String, Double>());
-            StatisticsFrequencyDistribution distribution = output.getStatistics().getFrequencyDistribution(i);
-            for (int j=0; j<distribution.values.length; j++) {
-                likelihoods.get(i).put(distribution.values[j], distribution.frequency[j]);
-            }
-        }
-        return likelihoods;
-    }
-
-    /**
-     * Calculate the relative error
-     * @param countInput
-     * @param countOutput
-     * @return
-     */
-    private static double getRelativeError(double countInput, double countOutput) {
-        if (countInput == 0 && countOutput == 0) {
-            return 0;
-        } else if (countInput == 0) {
-            return Double.POSITIVE_INFINITY;
-        } else {
-            return Math.abs(countInput - countOutput) / countInput;
-        }
-    }
-
     /**
      * Executes the query on the given handle
      * @param query
@@ -184,7 +150,7 @@ public class BenchmarkCube {
      * @param likelihoods
      * @return
      */
-    private static double executeQuery(Map<Integer, Set<String>> query, DataHandle handle, Map<Integer, Map<String, Double>> likelihoods) {
+    private static double getCount(Map<Integer, Set<String>> query, DataHandle handle, Map<Integer, Map<String, Double>> likelihoods) {
         
         // Prepare
         double count = 0;
@@ -223,16 +189,108 @@ public class BenchmarkCube {
                 }
             }
 
-            // Found: increment
-            if (likelihood > 0.2d) {
+            // Found
+            if (likelihoods == null) {
                 count++;
+            } else {
+                count += (1 / (1 + Math.exp(-likelihood * 5)) - 0.5) * 2;
             }
         }
-
+        
         // Done
         return count;
     }
     
+    /**
+     * Load and configure a dataset with the given number of quasi-identifiers
+     * 
+     * @param dataset
+     * @return
+     * @throws IOException 
+     */
+    private static Data getData(String dataset) throws IOException {        
+       
+        Data data = Data.create(DATA_DIR + dataset + ".csv", StandardCharsets.UTF_8, ';');
+
+        // Declare all attributes as insensitive
+        for (int i = 0; i < data.getHandle().getNumColumns(); i++) {
+            data.getDefinition().setAttributeType(data.getHandle().getAttributeName(i), AttributeType.INSENSITIVE_ATTRIBUTE);
+        }
+
+        for (int i = 0; i < 7; i++) {
+            String attribute = data.getHandle().getAttributeName(i);
+            data.getDefinition().setAttributeType(attribute, getHierarchy(data, attribute));
+        }      
+        data.getDefinition().setAttributeType("occupation", AttributeType.SENSITIVE_ATTRIBUTE);
+        return data;
+    }
+
+    /**
+     * Returns the generalization hierarchy for the dataset and attribute
+     * 
+     * @param data
+     * @param attribute
+     * @return
+     * @throws IOException
+     */
+    private static Hierarchy getHierarchy(Data data, String attribute) {
+        DefaultHierarchy hierarchy = Hierarchy.create();
+        int col = data.getHandle().getColumnIndexOf(attribute);
+        String[] values = data.getHandle().getDistinctValues(col);
+        for (String value : values) {
+            hierarchy.add(value, DataType.ANY_VALUE);
+        }
+        return hierarchy;
+    }
+    
+    /**
+     * Creates a map of likelihoods
+     * @param output
+     * @return
+     */
+    private static Map<Integer, Map<String, Double>> getLikelihoods(DataHandle output) {
+        Map<Integer, Map<String, Double>> likelihoods = new HashMap<>();
+        for (int i=0; i<output.getNumColumns(); i++) {
+            likelihoods.put(i, new HashMap<String, Double>());
+            StatisticsFrequencyDistribution distribution = output.getStatistics().getFrequencyDistribution(i);
+            for (int j=0; j<distribution.values.length; j++) {
+                likelihoods.get(i).put(distribution.values[j], distribution.frequency[j]);
+            }
+        }
+        return likelihoods;
+    }  
+
+    /**
+     * Perform cell suppression.
+     * 
+     * @param data
+     * @param numQis
+     * @return
+     * @throws IOException
+     * @throws RollbackRequiredException
+     */
+    private static DataHandle getOutput(Data data) throws IOException, RollbackRequiredException {
+        
+        double o_min = 0.001d;
+        ARXConfiguration config = ARXConfiguration.create();
+
+        double maxOutliers = 1.0d - o_min;
+        config.setSuppressionLimit(maxOutliers);
+        config.setQualityModel(Metric.createLossMetric(0d));
+        config.addPrivacyModel(new KAnonymity(5));
+        config.addPrivacyModel(new DistinctLDiversity("occupation", 3));
+        config.setHeuristicSearchEnabled(false);
+        
+        // Configure and set up   
+        ARXAnonymizer anonymizer = new ARXAnonymizer();
+        ARXResult result = anonymizer.anonymize(data, config);
+        DataHandle output = result.getOutput();
+        if (output != null && result.isOptimizable(output)) {
+            result.optimizeIterativeFast(output, o_min);
+        }    
+        return output;
+    }
+
     /**
      * From: https://stackoverflow.com/questions/1670862/obtaining-a-powerset-of-a-set-in-java
      * @param originalSet
@@ -255,7 +313,42 @@ public class BenchmarkCube {
             sets.add(set);
         }       
         return sets;
-    }  
+    }
+
+    /**
+     * Creates a random query
+     * @param input
+     * @param attributes
+     * @param draw
+     * @return
+     */
+    private static Map<Integer, Set<String>> getRandomPointQuery(DataHandle input, Set<String> attributes, boolean draw) {
+
+        // Prepare
+        Map<Integer, Set<String>> query = new HashMap<>();
+        
+        // Select record
+        int record = (int)Math.round(Math.random() * input.getNumRows());
+        
+        // Construct query
+        for (String attribute : attributes) {
+            
+            int column = input.getColumnIndexOf(attribute);
+            
+            if (draw) {
+                List<String> values = Arrays.asList(input.getDistinctValues(column));
+                Collections.shuffle(values);
+                query.put(column, new HashSet<String>());
+                query.get(column).add(values.get(0));
+            } else {
+                query.put(column, new HashSet<String>());
+                query.get(column).add(input.getValue(record, column));
+            }
+        }
+        
+        // Return
+        return query;
+    }
 
     /**
      * Creates a random query
@@ -296,110 +389,18 @@ public class BenchmarkCube {
     }
 
     /**
-     * Creates a random query
-     * @param input
-     * @param attributes
-     * @param draw
+     * Calculate the relative error
+     * @param countInput
+     * @param countOutput
      * @return
      */
-    private static Map<Integer, Set<String>> getRandomPointQuery(DataHandle input, Set<String> attributes, boolean draw) {
-
-        // Prepare
-        Map<Integer, Set<String>> query = new HashMap<>();
-        
-        // Select record
-        int record = (int)Math.round(Math.random() * input.getNumRows());
-        
-        // Construct query
-        for (String attribute : attributes) {
-            
-            int column = input.getColumnIndexOf(attribute);
-            
-            if (draw) {
-                List<String> values = Arrays.asList(input.getDistinctValues(column));
-                Collections.shuffle(values);
-                query.put(column, new HashSet<String>());
-                query.get(column).add(values.get(0));
-            } else {
-                query.put(column, new HashSet<String>());
-                query.get(column).add(input.getValue(record, column));
-            }
+    private static double getRelativeError(double countInput, double countOutput) {
+        if (countInput == 0 && countOutput == 0) {
+            return 0;
+        } else if (countInput == 0) {
+            return Double.POSITIVE_INFINITY;
+        } else {
+            return Math.abs(countInput - countOutput) / countInput;
         }
-        
-        // Return
-        return query;
-    }
-
-    /**
-     * Load and configure a dataset with the given number of quasi-identifiers
-     * 
-     * @param dataset
-     * @return
-     * @throws IOException 
-     */
-    private static Data getData(String dataset) throws IOException {        
-       
-        Data data = Data.create(DATA_DIR + dataset + ".csv", StandardCharsets.UTF_8, ';');
-
-        // Declare all attributes as insensitive
-        for (int i = 0; i < data.getHandle().getNumColumns(); i++) {
-            data.getDefinition().setAttributeType(data.getHandle().getAttributeName(i), AttributeType.INSENSITIVE_ATTRIBUTE);
-        }
-
-        for (int i = 0; i < 7; i++) {
-            String attribute = data.getHandle().getAttributeName(i);
-            data.getDefinition().setAttributeType(attribute, getHierarchy(data, attribute));
-        }      
-        data.getDefinition().setAttributeType("occupation", AttributeType.SENSITIVE_ATTRIBUTE);
-        return data;
-    }
-
-    /**
-     * Perform cell suppression.
-     * 
-     * @param data
-     * @param numQis
-     * @return
-     * @throws IOException
-     * @throws RollbackRequiredException
-     */
-    private static DataHandle getOutput(Data data) throws IOException, RollbackRequiredException {
-        
-        double o_min = 0.001d;
-        ARXConfiguration config = ARXConfiguration.create();
-
-        double maxOutliers = 1.0d - o_min;
-        config.setSuppressionLimit(maxOutliers);
-        config.setQualityModel(Metric.createLossMetric(0d));
-        config.addPrivacyModel(new KAnonymity(5));
-        config.addPrivacyModel(new DistinctLDiversity("occupation", 3));
-        config.setHeuristicSearchEnabled(false);
-        
-        // Configure and set up   
-        ARXAnonymizer anonymizer = new ARXAnonymizer();
-        ARXResult result = anonymizer.anonymize(data, config);
-        DataHandle output = result.getOutput();
-        if (output != null && result.isOptimizable(output)) {
-            result.optimizeIterativeFast(output, o_min);
-        }    
-        return output;
-    }
-
-    /**
-     * Returns the generalization hierarchy for the dataset and attribute
-     * 
-     * @param data
-     * @param attribute
-     * @return
-     * @throws IOException
-     */
-    private static Hierarchy getHierarchy(Data data, String attribute) {
-        DefaultHierarchy hierarchy = Hierarchy.create();
-        int col = data.getHandle().getColumnIndexOf(attribute);
-        String[] values = data.getHandle().getDistinctValues(col);
-        for (String value : values) {
-            hierarchy.add(value, DataType.ANY_VALUE);
-        }
-        return hierarchy;
     }
 }
