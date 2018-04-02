@@ -116,7 +116,7 @@ public class BenchmarkCube {
 //            statsLM.add((1d - output.getStatistics().getQualityStatistics(set).getGranularity().getArithmeticMean()));
            
             // Perform experiments
-            for (int i = 0; i < 100; i++) {
+            for (int i = 0; i < 1000; i++) {
 
                 // Create
                 Map<Integer, Set<String>> pointQuery = getRandomPointQuery(input, set, true);
