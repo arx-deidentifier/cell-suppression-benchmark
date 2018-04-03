@@ -128,7 +128,7 @@ public class BenchmarkCube {
 
         // Print statistics
         System.out.println(" - Final results");
-        System.out.println(" - LM: " + statsLM.getMean());
+        System.out.println(" - Average LM: " + statsLM.getMean());
         System.out.println(" - Median relative error (point queries): " + statsPointQuery.getPercentile(50d));
         System.out.println(" - Median relative error (range queries): " + statsRangeQuery.getPercentile(50d));
 
