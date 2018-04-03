@@ -103,8 +103,6 @@ public class BenchmarkCube {
         Map<Integer, Map<String, Double>> likelihoods = getLikelihoods(output);
         
         // For each set in the power set
-        int count = 0;
-        int total = (int)Math.pow(2, attributes.size()) - 1;
         for (Set<String> set : getPowerSet(attributes)) {
             
             // Skip the empty set
@@ -113,7 +111,7 @@ public class BenchmarkCube {
             }
 
             // Information loss
-//            statsLM.add((1d - output.getStatistics().getQualityStatistics(set).getGranularity().getArithmeticMean()));
+            statsLM.addValue((1d - output.getStatistics().getQualityStatistics(set).getGranularity().getArithmeticMean()));
            
             // Perform experiments
             for (int i = 0; i < 1000; i++) {
@@ -126,14 +124,6 @@ public class BenchmarkCube {
                 statsPointQuery.addValue(getRelativeError(getCount(pointQuery, input, null), getCount(pointQuery, output, null)));
                 statsRangeQuery.addValue(getRelativeError(getCount(rangeQuery, input, null), getCount(rangeQuery, output, likelihoods)));
             }
-            
-            // Status
-            System.out.println(" - Work done: " + (++count) + " / " + total);
-
-            // Print statistics
-            System.out.println(" - Median relative error (point queries): " + statsPointQuery.getPercentile(50d));
-            System.out.println(" - Median relative error (range queries): " + statsRangeQuery.getPercentile(50d));
-            
         }
 
         // Print statistics
