@@ -69,19 +69,10 @@ public class BenchmarkCube {
      */
     public static void main(String[] args) throws IOException, RollbackRequiredException {
         
-        // No interpolation
+        // Results
         // - LM: 0.09761653690984728
         // - Median relative error (point queries): 0.0
-        // - Median relative error (range queries): 0.7023809523809523
-        // Simple interpolation
-        // - LM: 0.09761653690984728
-        // - Final results
-        // - Median relative error (point queries): 0.0
-        // - Median relative error (range queries): 0.6510762075962129
-        // Estimated using posteriori distribution with sigmoid activation function
-        // - Final results
-        // - Median relative error (point queries): 0.0
-        // - Median relative error (range queries): 0.36184886222834983
+        // - Median relative error (range queries): 0.4133476856835307
 
         // Perform experiment
         Data data = getData("adult");
@@ -121,7 +112,7 @@ public class BenchmarkCube {
                 Map<Integer, Set<String>> rangeQuery = getRandomRangeQuery(input, set);
 
                 // Perform and analze
-                statsPointQuery.addValue(getRelativeError(getCount(pointQuery, input, null), getCount(pointQuery, output, null)));
+                statsPointQuery.addValue(getRelativeError(getCount(pointQuery, input, null), getCount(pointQuery, output, likelihoods)));
                 statsRangeQuery.addValue(getRelativeError(getCount(rangeQuery, input, null), getCount(rangeQuery, output, likelihoods)));
             }
         }
@@ -156,6 +147,8 @@ public class BenchmarkCube {
             }
         }
         
+        double k = query.entrySet().size();
+        
         // Search all rows
         outer: for (int row = 0; row < handle.getNumRows(); row++) {
             
@@ -182,8 +175,8 @@ public class BenchmarkCube {
             // Found
             if (likelihoods == null) {
                 count++;
-            } else {
-                count += (1 / (1 + Math.exp(-likelihood * 5)) - 0.5) * 2;
+            } else if (likelihood >= 1d / k){
+                count ++;
             }
         }
         
